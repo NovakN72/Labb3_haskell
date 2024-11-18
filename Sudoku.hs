@@ -1,6 +1,7 @@
 module Sudoku where
 
 import Test.QuickCheck
+import Data.List
 
 ------------------------------------------------------------------------------
 
@@ -52,15 +53,17 @@ isSudoku sudoku =
 validNrOfRows :: [Row] -> Bool
 validNrOfRows rows = length rows == 9
 
-validNumberInRows ::[Row] -> Bool
-validNumberInRows rows = and [and $ map validNumber row | row <- rows]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+validNumberInCell ::[Row] -> Bool
+validNumberInCell rows = and [and $ map validNumber row | row <- rows]  
+  where
+    validNumber :: Cell -> Bool
+    validNumber cell = 
+      case cell of 
+        Just n -> n > 0 && n < 10
+        Nothing -> True
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
 
-validNumber :: Cell -> Bool
-validNumber cell = 
-  case cell of 
-    Just n -> n > 0 && n < 10
-    Nothing -> True
- 
+
    
 
 -- * A3
@@ -68,7 +71,19 @@ validNumber cell =
 -- | isFilled sud checks if sud is completely filled in,
 -- i.e. there are no blanks
 isFilled :: Sudoku -> Bool
-isFilled = undefined
+isFilled sudoku = 
+  let 
+    r = rows sudoku
+  in and [ and $ map isNumber row | row <- r] 
+    where
+      isNumber :: Cell -> Bool 
+      isNumber cell = 
+        case cell of 
+          Just n -> True
+          Nothing -> False
+
+
+
 
 ------------------------------------------------------------------------------
 
@@ -77,8 +92,21 @@ isFilled = undefined
 -- | printSudoku sud prints a nice representation of the sudoku sud on
 -- the screen
 printSudoku :: Sudoku -> IO ()
-printSudoku = undefined
+printSudoku (Sudoku []) = return () 
+printSudoku sudoku = do
+  let (row:rest) = rows sudoku
+      newSudoku = Sudoku rest
+  printOut row
+  printSudoku newSudoku
 
+
+printOut :: Row -> IO ()
+printOut [] = putStr "\n"
+printOut (cell:cells) = do
+  case cell of 
+    Just n -> putStr (show n)
+    Nothing -> putStr (".")
+  printOut cells
 -- * B2
 
 -- | readSudoku file reads from the file, and either delivers it, or stops
