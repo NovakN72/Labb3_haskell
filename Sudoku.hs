@@ -2,6 +2,7 @@ module Sudoku where
 
 import Test.QuickCheck
 import Data.List
+import Data.Char
 
 ------------------------------------------------------------------------------
 
@@ -112,7 +113,21 @@ printOut (cell:cells) = do
 -- | readSudoku file reads from the file, and either delivers it, or stops
 -- if the file did not contain a sudoku
 readSudoku :: FilePath -> IO Sudoku
-readSudoku = undefined
+readSudoku file = do 
+  texts <- readFile file
+  let fixedTexts = lines texts
+      rows = [rowMaker text | text <- fixedTexts]
+  if isSudoku (Sudoku rows) 
+    then return (Sudoku rows)  
+    else error "Not a Sudoku!"
+
+
+rowMaker :: [Char] -> Row
+rowMaker [] = []
+rowMaker (char:chars) = 
+  case char of 
+    '.'       -> (Nothing:rowMaker chars)
+    otherwise ->(Just (digitToInt char):rowMaker chars)
 
 ------------------------------------------------------------------------------
 
