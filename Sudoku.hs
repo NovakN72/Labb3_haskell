@@ -6,7 +6,7 @@ import Test.QuickCheck
 
 -- | Representation of sudoku puzzles (allows some junk)
 type Cell = Maybe Int -- a single cell
-type Row  = [Cell]    -- a row is a list of cells
+type Row  = [Cell]    -- a row is a list of cellss
 
 data Sudoku = Sudoku [Row] 
  deriving ( Show, Eq )
