@@ -8,7 +8,7 @@ import Data.Char
 
 -- | Representation of sudoku puzzles (allows some junk)
 type Cell = Maybe Int -- a single cell
-type Row  = [Cell]    -- a row is a list of cellss
+type Row  = [Cell]    -- a row is a list of cells
 
 data Sudoku = Sudoku [Row] 
  deriving ( Show, Eq )
@@ -123,33 +123,41 @@ readSudoku file = do
 
 
 rowMaker :: [Char] -> Row
-rowMaker [] = []
-rowMaker (char:chars) = 
-  case char of 
-    '.'       -> (Nothing:rowMaker chars)
-    otherwise ->(Just (digitToInt char):rowMaker chars)
-
+rowMaker list = foldr (\char acc -> case char of 
+    '.'       -> Nothing : acc
+    otherwise -> Just (digitToInt char) : acc) [] list
+  
 ------------------------------------------------------------------------------
 
 -- * C1
 
 -- | cell generates an arbitrary cell in a Sudoku
 cell :: Gen (Cell)
-cell = undefined
-
+cell = frequency[
+  (1,do n <- rMaybeInt
+        return n),
+  (9,return Nothing)]
+  where
+    rMaybeInt :: Gen (Cell)
+    rMaybeInt = do
+      n <- choose(1,9)
+      return $ Just n
 
 -- * C2
 
 -- | an instance for generating Arbitrary Sudokus
 instance Arbitrary Sudoku where
-  arbitrary = undefined
+  arbitrary = do 
+    rows <- vectorOf 9 (vectorOf 9 cell)
+    return (Sudoku rows)
+ 
 
  -- hint: get to know the QuickCheck function vectorOf
  
 -- * C3
 
 prop_Sudoku :: Sudoku -> Bool
-prop_Sudoku = undefined
+prop_Sudoku sud = isSudoku sud
   -- hint: this definition is simple!
   
 ------------------------------------------------------------------------------
@@ -160,7 +168,15 @@ type Block = [Cell] -- a Row is also a Cell
 -- * D1
 
 isOkayBlock :: Block -> Bool
-isOkayBlock = undefined
+isOkayBlock block = 
+  let onlyNumbers = onlyNumbersInBlock block
+      dupDelete = nub onlyNumbers
+  in onlyNumbers == dupDelete
+    where
+        onlyNumbersInBlock :: Block -> Block 
+        onlyNumbersInBlock  = foldr (\cell acc -> case cell of
+                        Just n   -> Just n : acc
+                        otherwise -> acc) []
 
 
 -- * D2
