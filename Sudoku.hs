@@ -3,6 +3,7 @@ module Sudoku where
 import Test.QuickCheck
 import Data.List
 import Data.Char
+import Data.Maybe
 
 ------------------------------------------------------------------------------
 
@@ -20,7 +21,7 @@ rows (Sudoku ms) = ms
 example :: Sudoku
 example =
     Sudoku 
-      [ [j 3,j 6,n  ,n  ,j 7,j 1,j 2,n  ,n  ]
+      [ [j 3,j 7,n  ,n  ,j 7,j 1,j 2,n  ,n  ]
       , [n  ,j 5,n  ,n  ,n  ,n  ,j 1,j 8,n  ]
       , [n  ,n  ,j 9,j 2,n  ,j 4,j 7,n  ,n  ]
       , [n  ,n  ,n  ,n  ,j 1,j 3,n  ,j 2,j 8]
@@ -33,6 +34,16 @@ example =
   where
     n = Nothing
     j = Just
+
+example2 = Sudoku [[Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing],
+        [Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing],
+        [Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing],
+        [Nothing,Nothing,Just 9,Nothing,Just 3,Nothing,Nothing,Nothing,Just 4],
+        [Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Just 9],
+        [Nothing,Nothing,Nothing,Just 7,Nothing,Nothing,Nothing,Nothing,Just 1],
+        [Nothing,Just 1,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing],
+        [Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing],
+        [Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing]]
 
 -- * A1
 
@@ -48,11 +59,11 @@ isSudoku :: Sudoku -> Bool
 isSudoku sudoku = 
   let 
     r = rows sudoku
-  in validNrOfRows r && validNrOfRows r
+  in validNrOfRows r && validNumberInCell r
   
 
 validNrOfRows :: [Row] -> Bool
-validNrOfRows rows = length rows == 9
+validNrOfRows rows = length rows == 9 && all (== 9)(map length rows)
 
 validNumberInCell ::[Row] -> Bool
 validNumberInCell rows = and [and $ map validNumber row | row <- rows]  
@@ -182,15 +193,49 @@ isOkayBlock block =
 -- * D2
 
 blocks :: Sudoku -> [Block]
-blocks = undefined
+blocks sudoku = columnMaker sudoku ++ threeTimesThreeBlock sudoku ++ rows sudoku 
+  
+ 
+columnMaker :: Sudoku -> [Block]
+columnMaker sudoku = 
+  let rs = rows sudoku
+  in transpose rs
+      
+
+threeTimesThreeBlock :: Sudoku -> [Block]
+threeTimesThreeBlock sudoku = 
+  let rs = rows sudoku
+  in helperTwo $ helper rs
+
+helper :: [Row] -> [Block]
+helper []   = []
+helper rs
+  | all null rs = [] 
+  | otherwise =
+      let block = [take 3 r | r <- rs]
+          newRs = [drop 3 r | r <- rs]
+      in block ++ helper newRs
+
+helperTwo :: [Block] -> [Block]
+helperTwo [] = []
+helperTwo list = 
+  let block   = [concat (take 3 list)]
+      newList  =  drop 3 list
+  in  block ++ helperTwo newList
+
+
 
 prop_blocks_lengths :: Sudoku -> Bool
-prop_blocks_lengths = undefined
+prop_blocks_lengths sudoku = length (blocks sudoku) == 27 && and [ helperPropLength b | b <- blocks sudoku]
+
+helperPropLength :: Row -> Bool
+helperPropLength row = length row == 9
 
 -- * D3
 
 isOkay :: Sudoku -> Bool
-isOkay = undefined
+isOkay sudoku = and [isOkayBlock block | block <- blocks sudoku]
+
 
 
 ---- Part A ends here --------------------------------------------------------
@@ -205,39 +250,121 @@ type Pos = (Int,Int)
 -- * E1
 
 blanks :: Sudoku -> [Pos]
-blanks = undefined
+blanks sud = 
+  let rs = rows sud 
+      zippedRs = zipSudoku rs
+  in concat [checkBlank tuple | tuple <- zippedRs]
 
---prop_blanks_allBlanks :: ...
---prop_blanks_allBlanks =
+
+zipSudoku :: [Row] -> [([Cell],Int)]
+zipSudoku rs = rs `zip` [0..8]
+
+checkBlank :: ([Cell],Int) -> [Pos]
+checkBlank (l,row) = [(row,col) | (Nothing,col) <- l `zip` [0..8]]
+
+
+
+prop_blanks_allBlanks :: Bool
+prop_blanks_allBlanks = length (blanks allBlankSudoku) == 9*9
 
 
 -- * E2
 
 (!!=) :: [a] -> (Int,a) -> [a]
-xs !!= (i,y) = undefined
+xs !!= (i,y) = loopAndChange i y xs
 
---prop_bangBangEquals_correct :: ...
---prop_bangBangEquals_correct =
+loopAndChange :: Int -> a -> [a] -> [a]
+loopAndChange i y [] = []
+loopAndChange i y (x:xs) 
+  | i > 0            = x : loopAndChange (i-1) y xs
+  | i == 0           = y : xs 
+
+
+
+prop_bangBangEquals_correct ::  Eq a => [a] -> (Int,a) -> Bool
+prop_bangBangEquals_correct xs (i,y)
+  | null xs            = xs !!= (abs i,y) == xs 
+  | abs i >= length xs = xs !!= (abs i,y) == xs 
+  | otherwise          = (length (xs !!= (abs i,y)) == length xs) && ((xs !!= (abs i,y)) /= xs)
 
 
 -- * E3
 
 update :: Sudoku -> Pos -> Cell -> Sudoku
-update = undefined
+update sudoku (r,col) cell = 
+  let zippedRows = zipSudoku $ rows sudoku
+  in Sudoku [changeRow col r (l,i) cell | (l,i) <- zippedRows]
 
---prop_update_updated :: ...
---prop_update_updated =
+
+changeRow :: Int -> Int -> ([Cell],Int) -> Maybe Int -> Row
+changeRow col r (l,i) cell
+  | r == i    = l !!= (col,cell)
+  | otherwise = l
+
+
+prop_update_updated :: Sudoku -> Pos -> Cell -> Bool 
+prop_update_updated sudoku (r,col) cell
+  | abs r >= 9   = True 
+  | abs col >= 9 = True
+  |otherwise =
+      let result = update sudoku (abs r,abs col) cell
+          l = (rows result) !! (abs r) 
+          c = l !! (abs col)
+      in c == cell 
+
 
 
 ------------------------------------------------------------------------------
 
 -- * F1
+solve :: Sudoku -> Maybe Sudoku
+solve sudoku = 
+  let listOfAnswers = solve' sudoku (blanks sudoku) 
+  in  case listOfAnswers of
+    [] -> Nothing
+    _ -> Just (listOfAnswers !! 0)
+  
 
+solve' :: Sudoku -> [Pos] -> [Sudoku]
+solve' sudoku [] = [sudoku]
+solve' sudoku listOfBlanks
+  | isSudoku sudoku == False = []
+  | isOkay sudoku == False   = []
+  | otherwise =  
+     let [p] = take 1 listOfBlanks
+         newListofBlanks = drop 1 listOfBlanks
+     in concat [solve' (update sudoku p (Just n)) newListofBlanks | n <- [1..9]]
+    
 
 -- * F2
+readAndSolve :: FilePath -> IO ()
+readAndSolve filepath = do 
+  sud <- readSudoku filepath
+  let answer = solve sud
+  case answer of 
+    Nothing -> putStrLn "no answer"
+    Just sud -> printSudoku sud
+
 
 
 -- * F3
-
+isSolutionOf :: Sudoku -> Sudoku -> Bool
+isSolutionOf solution original 
+ | isFilled solution == False = False
+ | isOkay solution == False = False
+ | otherwise = 
+    let bs = blanks original
+        result = helperThree solution bs
+    in  blocks result == blocks original
+    
+  
+helperThree :: Sudoku -> [Pos] -> Sudoku
+helperThree sudoku [] = sudoku
+helperThree sudoku (p:ps) = helperThree (update sudoku p Nothing) ps
 
 -- * F4
+prop_SolveSound :: Sudoku -> Property
+prop_SolveSound original = 
+  case (solve original) of 
+    Nothing -> property True
+    Just solution -> property (isSolutionOf solution original)
