@@ -20,20 +20,17 @@ rows (Sudoku ms) = ms
 -- | A sample sudoku puzzle
 example :: Sudoku
 example =
-    Sudoku 
-      [ [j 3,j 7,n  ,n  ,j 7,j 1,j 2,n  ,n  ]
-      , [n  ,j 5,n  ,n  ,n  ,n  ,j 1,j 8,n  ]
-      , [n  ,n  ,j 9,j 2,n  ,j 4,j 7,n  ,n  ]
-      , [n  ,n  ,n  ,n  ,j 1,j 3,n  ,j 2,j 8]
-      , [j 4,n  ,n  ,j 5,n  ,j 2,n  ,n  ,j 9]
-      , [j 2,j 7,n  ,j 4,j 6,n  ,n  ,n  ,n  ]
-      , [n  ,n  ,j 5,j 3,n  ,j 8,j 9,n  ,n  ]
-      , [n  ,j 8,j 3,n  ,n  ,n  ,n  ,j 6,n  ]
-      , [n  ,n  ,j 7,j 6,j 9,n  ,n  ,j 4,j 3]
-      ]
-  where
-    n = Nothing
-    j = Just
+  Sudoku
+    [ [Just 3, Just 6, Nothing,Nothing,Just 7, Just 1, Just 2, Nothing,Nothing]
+    , [Nothing,Just 5, Nothing,Nothing,Nothing,Nothing,Just 1, Just 8, Nothing]
+    , [Nothing,Nothing,Just 9, Just 2, Nothing,Just 4, Just 7, Nothing,Nothing]
+    , [Nothing,Nothing,Nothing,Nothing,Just 1, Just 3, Nothing,Just 2, Just 8]
+    , [Just 4, Nothing,Nothing,Just 5, Nothing,Just 2, Nothing,Nothing,Just 9]
+    , [Just 2, Just 7, Nothing,Just 4, Just 6, Nothing,Nothing,Nothing,Nothing]
+    , [Nothing,Nothing,Just 5, Just 3, Nothing,Just 8, Just 9, Nothing,Nothing]
+    , [Nothing,Just 8, Just 3, Nothing,Nothing,Nothing,Nothing,Just 6, Nothing]
+    , [Nothing,Nothing,Just 7, Just 6, Just 9, Nothing,Nothing,Just 4, Just 3]
+    ]
 
 example2 = Sudoku [[Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing],
         [Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing,Nothing],
@@ -326,10 +323,10 @@ solve sudoku =
   
 
 solve' :: Sudoku -> [Pos] -> [Sudoku]
-solve' sudoku [] = [sudoku]
 solve' sudoku listOfBlanks
   | isSudoku sudoku == False = []
   | isOkay sudoku == False   = []
+  | null listOfBlanks = [sudoku]
   | otherwise =  
      let [p] = take 1 listOfBlanks
          newListofBlanks = drop 1 listOfBlanks
@@ -368,3 +365,6 @@ prop_SolveSound original =
   case (solve original) of 
     Nothing -> property True
     Just solution -> property (isSolutionOf solution original)
+
+fewerChecks prop =
+  quickCheckWith stdArgs{maxSuccess=30 } prop
